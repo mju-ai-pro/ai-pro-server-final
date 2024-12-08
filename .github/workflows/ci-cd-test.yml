@@ -162,6 +162,8 @@ jobs:
       
       - name: Send Deployment Success Notification
         if: success()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
           STATUS="성공 🚀"
           COLOR="5763719" 
