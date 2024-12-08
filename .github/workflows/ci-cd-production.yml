@@ -1,0 +1,393 @@
+name: CI CD PRODUCTION
+
+on:
+  push:
+    branches:
+      - production
+
+env:
+  EC2_USERNAME: ubuntu
+  AWS_REGION: ap-northeast-2
+  ECR_REPOSITORY: ${{ secrets.AWS_ECR_PRODUCTION_REPOSITORY }}
+  EKS_CLUSTER: ${{ secrets.AWS_CLUSTER_NAME }}
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  deploy:
+    name: Deploy to AWS EC2
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
+      - name: Configure AWS credentials for ECR
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+        with:
+          registry-type: public
+
+      - name: Build and push Docker image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+      - name: Configure AWS credentials for EKS
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          aws-region: ap-northeast-2
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER }} --region ap-northeast-2
+
+      - name: Create Kubernetes Secrets
+        run: |
+          kubectl create secret generic db-config --dry-run=client -o yaml \
+            --from-literal=db-url="${{ secrets.PRODUCTION_DB_URL }}" \
+            --from-literal=db-username="${{ secrets.PRODUCTION_DB_USERNAME }}" \
+            --from-literal=db-password="${{ secrets.PRODUCTION_DB_PASSWORD }}" | kubectl apply -f -
+
+          kubectl create secret generic app-config --dry-run=client -o yaml \
+            --from-literal=jwt-secret="${{ secrets.JWT_SECRET }}" \
+            --from-literal=ai-url="${{ secrets.AI_URL }}" \
+            --from-literal=ai-summary="${{ secrets.AI_SUMMARY }}" | kubectl apply -f -
+
+      - name: Deploy initial service and blue deployment if not exists
+        run: |
+          if ! kubectl get service ai-pro-server-service &>/dev/null; then
+            echo "Creating initial service..."
+            cat <<'EOF' | kubectl apply -f -
+            apiVersion: v1
+            kind: Service
+            metadata:
+             name: ai-pro-server-service
+            spec:
+             selector:
+               app: ai-pro-server
+               version: blue
+             ports:
+               - protocol: TCP
+                 port: 80
+                 targetPort: 8080
+             type: LoadBalancer
+          EOF
+
+          echo "Creating initial blue deployment..."
+          cat <<'EOF' | kubectl apply -f -
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: ai-pro-server-blue
+          spec:
+            replicas: 2
+            selector:
+              matchLabels:
+                app: ai-pro-server
+                version: blue
+            template:
+              metadata:
+                labels:
+                  app: ai-pro-server
+                  version: blue
+              spec:
+                containers:
+                  - name: ai-pro-server
+                    image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+                    imagePullPolicy: Always
+                    ports:
+                      - containerPort: 8080
+                    env:
+                    - name: DB_URL
+                      valueFrom:
+                        secretKeyRef:
+                          key: db-url
+                          name: db-config
+                    - name: DB_USERNAME
+                      valueFrom:
+                        secretKeyRef:
+                          key: db-username
+                          name: db-config
+                    - name: DB_PASSWORD
+                      valueFrom:
+                        secretKeyRef:
+                          key: db-password
+                          name: db-config
+                    - name: JWT_SECRET
+                      valueFrom:
+                        secretKeyRef:
+                          key: jwt-secret
+                          name: app-config
+                    - name: AI_URL
+                      valueFrom:
+                        secretKeyRef:
+                          key: ai-url
+                          name: app-config
+                    - name: AI_SUMMARY
+                      valueFrom:
+                        secretKeyRef:
+                          key: ai-summary
+                          name: app-config
+                    readinessProbe:
+                      httpGet:
+                        path: /api/test/health
+                        port: 8080
+                      initialDelaySeconds: 15
+                      periodSeconds: 5
+          EOF
+          fi
+
+      - name: Check current deployment
+        id: check-deployment
+        run: |
+          CURRENT_VERSION=$(kubectl get service ai-pro-server-service -o jsonpath='{.spec.selector.version}')
+          if [ "$CURRENT_VERSION" = "blue" ]; then
+          echo "::set-output name=new_version::green"
+          echo "::set-output name=current_version::blue"
+          else
+          echo "::set-output name=new_version::blue"
+          echo "::set-output name=current_version::green"
+          fi
+
+      - name: Deploy new version
+        env:
+          NEW_VERSION: ${{ steps.check-deployment.outputs.new_version }}
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          cat <<EOF | kubectl apply -f -
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: ai-pro-server-${NEW_VERSION}
+          spec:
+            replicas: 2
+            selector:
+               matchLabels:
+                 app: ai-pro-server
+                 version: ${NEW_VERSION}
+            template:
+             metadata:
+               labels:
+                 app: ai-pro-server
+                 version: ${NEW_VERSION}
+             spec:
+               containers:
+               - name: ai-pro-server
+                 image: ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}
+                 imagePullPolicy: Always
+                 ports:
+                 - containerPort: 8080
+                 env:
+                 - name: DB_URL
+                   valueFrom:
+                     secretKeyRef:
+                       key: db-url
+                       name: db-config
+                 - name: DB_USERNAME
+                   valueFrom:
+                     secretKeyRef:
+                       key: db-username
+                       name: db-config
+                 - name: DB_PASSWORD
+                   valueFrom:
+                     secretKeyRef:
+                       key: db-password
+                       name: db-config
+                 - name: JWT_SECRET
+                   valueFrom:
+                     secretKeyRef:
+                       key: jwt-secret
+                       name: app-config
+                 - name: AI_URL
+                   valueFrom:
+                     secretKeyRef:
+                       key: ai-url
+                       name: app-config
+                 - name: AI_SUMMARY
+                   valueFrom:
+                     secretKeyRef:
+                       key: ai-summary
+                       name: app-config
+                 readinessProbe:
+                   httpGet:
+                     path: /api/test/health
+                     port: 8080
+                   initialDelaySeconds: 15
+                   periodSeconds: 5
+          EOF
+
+      - name: Wait for deployment
+        env:
+          NEW_VERSION: ${{ steps.check-deployment.outputs.new_version }}
+        run: |
+          kubectl rollout status deployment/ai-pro-server-${NEW_VERSION} --timeout=300s
+
+      - name: Verify deployment
+        env:
+          NEW_VERSION: ${{ steps.check-deployment.outputs.new_version }}
+        run: |
+          echo "Checking pod status..."
+          kubectl get pods -l version=${NEW_VERSION}
+          
+          echo "Performing health checks..."
+          NEW_POD=$(kubectl get pods -l version=${NEW_VERSION} -o jsonpath='{.items[0].metadata.name}')
+          
+          kubectl port-forward $NEW_POD 8080:8080 &
+          PF_PID=$!
+          sleep 5
+          
+          HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://mjuaipro.site/api/test/health)
+          kill $PF_PID
+          
+          if [ "$HEALTH_STATUS" != "200" ]; then
+            echo "Health check failed"
+            exit 1
+          fi
+          echo "Health check passed"
+
+      - name: Switch traffic
+        if: success()
+        env:
+          NEW_VERSION: ${{ steps.check-deployment.outputs.new_version }}
+        run: |
+          kubectl patch service ai-pro-server-service -p "{\"spec\":{\"selector\":{\"version\":\"${NEW_VERSION}\"}}}"
+          echo "Traffic switched to ${NEW_VERSION} version"
+        
+      - name: Monitor deployment
+        id: monitor
+        env:
+          NEW_VERSION: ${{ steps.check-deployment.outputs.new_version }}
+          CURRENT_VERSION: ${{ steps.check-deployment.outputs.current_version }}
+        continue-on-error: true
+        run: |
+          FAILURE_THRESHOLD=3
+          FAILURE_COUNT=0
+          SUCCESS_THRESHOLD=3
+          SUCCESS_COUNT=0
+          MONITORING_DURATION=300
+          END_TIME=$((SECONDS + MONITORING_DURATION))
+          
+          while [ $SECONDS -lt $END_TIME ]; do
+            SERVICE_IP=$(kubectl get service ai-pro-server-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+            echo "SERVICE_IP: $SERVICE_IP"
+
+            if [ -z "$SERVICE_IP" ]; then
+              echo "SERVICE_IP is empty. Using fallback URL."
+            fi
+            
+            RESPONSE=$(curl -s -w "\n%{http_code}" https://mjuaipro.site/api/test/rollback)
+            HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+            HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+            
+            echo "Received HTTP Code: $HTTP_CODE"
+            echo "Received Response Body: $HTTP_BODY"
+            
+            if [ "$HTTP_CODE" != "200" ]; then
+              FAILURE_COUNT=$((FAILURE_COUNT + 1))
+              SUCCESS_COUNT=0
+              echo "Health check failed with status code: $HTTP_CODE"
+              echo "Failure count: $FAILURE_COUNT"
+              
+              if [ $FAILURE_COUNT -ge $FAILURE_THRESHOLD ]; then
+                echo "Failure threshold exceeded. Rolling back..."
+                echo "Last failed response code: $HTTP_CODE"
+                echo "Last failed response body: $HTTP_BODY"
+                
+                kubectl patch service ai-pro-server-service -p "{\"spec\":{\"selector\":{\"version\":\"${CURRENT_VERSION}\"}}}"
+                kubectl delete deployment ai-pro-server-${NEW_VERSION}
+                
+                echo "Checking pods after rollback:"
+                kubectl get pods -l version=${CURRENT_VERSION}
+          
+                echo "::set-output name=deployment_status::failed"
+                exit 1
+              fi
+            else
+              echo "Health check passed with status code: $HTTP_CODE"
+              SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
+              
+              if [ $SUCCESS_COUNT -ge $SUCCESS_THRESHOLD ]; then
+                echo "Deployment successfully stabilized after $SUCCESS_COUNT consecutive successful health checks"
+                echo "::set-output name=deployment_status::success"
+                exit 0
+              fi
+            fi
+            
+            sleep 10
+          done
+  
+      - name: Cleanup old deployment
+        if: steps.monitor.outputs.deployment_status == 'success'
+        env:
+          CURRENT_VERSION: ${{ steps.check-deployment.outputs.current_version }}
+        run: |
+          kubectl delete deployment ai-pro-server-${CURRENT_VERSION}
+          echo "Old deployment cleaned up"
+  
+      - name: Notify deployment status
+        if: always()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DEPLOYMENT_STATUS: ${{ steps.monitor.outputs.deployment_status }}
+        run: |
+          if [ "$DEPLOYMENT_STATUS" == "success" ]; then
+            STATUS="성공 🚀"
+            COLOR="5763719" 
+            DESCRIPTION="✨ 새로운 버전이 성공적으로 배포되었습니다!"
+          else
+            STATUS="실패 ❌"
+            COLOR="15548997"
+            DESCRIPTION="🔄 이전 버전으로 롤백되었습니다."
+          fi
+          
+          DEPLOY_TIME=$(TZ='Asia/Seoul' date '+%Y-%m-%d %H:%M:%S')
+          
+          curl -H "Content-Type: application/json" \
+               -d '{
+                 "embeds": [{
+                   "title": "'"📦 배포 $STATUS"'",
+                   "description": "'"$DESCRIPTION"'",
+                   "color": '"$COLOR"',
+                   "fields": [
+                     {
+                       "name": "🏗️ 저장소",
+                       "value": "'"${{ github.repository }}"'",
+                       "inline": true
+                     },
+                     {
+                       "name": "🌿 브랜치",
+                       "value": "'"${GITHUB_REF#refs/heads/}"'",
+                       "inline": true
+                     },
+                     {
+                       "name": "📝 커밋",
+                       "value": "```'"${IMAGE_TAG}"'```",
+                       "inline": false
+                     },
+                     {
+                       "name": "⏰ 배포 시간",
+                       "value": "'"$DEPLOY_TIME"'",
+                       "inline": false
+                     }
+                   ],
+                   "thumbnail": {
+                     "url": "https://github.com/fluidicon.png"
+                   },
+                   "footer": {
+                     "text": "GitHub Actions CI/CD",
+                     "icon_url": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
+                   }
+                 }]
+               }' $DISCORD_WEBHOOK
