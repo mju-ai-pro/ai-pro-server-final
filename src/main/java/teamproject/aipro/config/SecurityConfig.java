@@ -34,7 +34,6 @@ public class SecurityConfig {
 			.csrf(csrf -> csrf.disable())
 			.cors(cors -> cors.configurationSource(request -> {
 				var config = new org.springframework.web.cors.CorsConfiguration();
-
 				config.setAllowCredentials(true);
 				config.setAllowedOrigins(List.of("https://www.mjuaipro.site", "https://ai-pro-fe.vercel.app"));
 				config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
@@ -46,7 +45,6 @@ public class SecurityConfig {
 					"Sec-CH-UA-Mobile",
 					"Sec-CH-UA-Platform"
 				));
-
 				return config;
 			}))
 			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

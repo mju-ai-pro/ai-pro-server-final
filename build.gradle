@@ -64,7 +64,6 @@ jacocoTestReport {
 }
 
 
-
 repositories {
 	mavenCentral()
 }
