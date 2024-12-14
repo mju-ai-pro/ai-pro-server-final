@@ -37,14 +37,7 @@ public class SecurityConfig {
 				config.setAllowCredentials(true);
 				config.setAllowedOrigins(List.of("https://www.mjuaipro.site", "https://www.sinjjanggu.site", "https://www.hongkikii.site", "https://ai-pro-fe.vercel.app"));
 				config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-				config.setAllowedHeaders(List.of(
-					"Content-Type",
-					"Authorization",
-					"Accept",
-					"Sec-CH-UA",
-					"Sec-CH-UA-Mobile",
-					"Sec-CH-UA-Platform"
-				));
+				config.setAllowedHeaders(List.of("*"));
 				return config;
 			}))
 			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
