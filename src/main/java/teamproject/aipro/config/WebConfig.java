@@ -15,7 +15,6 @@ public class WebConfig implements WebMvcConfigurer {
 			.allowedOrigins("https://www.mjuaipro.site", "https://www.sinjjanggu.site", "https://www.hongkikii.site", "https://ai-pro-fe.vercel.app")
 			.allowedHeaders("*")
 			.allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-			.exposedHeaders("Authorization")
 			.allowCredentials(true);
 	}
 
