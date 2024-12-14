@@ -16,7 +16,6 @@ import teamproject.aipro.domain.member.entity.Member;
 import teamproject.aipro.domain.member.service.MemberService;
 
 @RestController
-@CrossOrigin(origins = {"*"})
 @RequestMapping("/api/member")
 public class MemberController {
 

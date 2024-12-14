@@ -10,12 +10,11 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebConfig implements WebMvcConfigurer {
 	@Override
 	public void addCorsMappings(CorsRegistry registry) {
-		registry.addMapping("/**")
-			.allowedOrigins("https://www.mjuaipro.site", "https://ai-pro-fe.vercel.app")
+		registry
+			.addMapping("/**")
+			.allowedOrigins("https://www.mjuaipro.site", "https://www.sinjjanggu.site", "https://www.hongkikii.site", "https://ai-pro-fe.vercel.app")
+			.allowedHeaders("*")
 			.allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-			.allowedHeaders("Content-Type", "Authorization", "Accept",
-				"Sec-CH-UA", "Sec-CH-UA-Mobile", "Sec-CH-UA-Platform")
-			.exposedHeaders("Authorization")
 			.allowCredentials(true);
 	}
 
@@ -23,5 +22,4 @@ public class WebConfig implements WebMvcConfigurer {
 	public RestTemplate restTemplate() {
 		return new RestTemplate();
 	}
-
 }

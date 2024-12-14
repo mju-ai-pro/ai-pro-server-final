@@ -18,7 +18,6 @@ import teamproject.aipro.domain.chat.service.ChatHistoryService;
 
 
 @RestController
-@CrossOrigin(origins = {"*"})
 @RequestMapping("/api")
 public class ChatHistoryController {
 

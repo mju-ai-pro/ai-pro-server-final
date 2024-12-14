@@ -34,17 +34,10 @@ public class SecurityConfig {
 			.csrf(csrf -> csrf.disable())
 			.cors(cors -> cors.configurationSource(request -> {
 				var config = new org.springframework.web.cors.CorsConfiguration();
-				config.setAllowCredentials(true);
-				config.setAllowedOrigins(List.of("https://www.mjuaipro.site", "https://ai-pro-fe.vercel.app"));
+				config.setAllowedOrigins(List.of("https://www.mjuaipro.site", "https://www.sinjjanggu.site", "https://www.hongkikii.site", "https://ai-pro-fe.vercel.app"));
+				config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
 				config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-				config.setAllowedHeaders(List.of(
-					"Content-Type",
-					"Authorization",
-					"Accept",
-					"Sec-CH-UA",
-					"Sec-CH-UA-Mobile",
-					"Sec-CH-UA-Platform"
-				));
+				config.setAllowCredentials(true);
 				return config;
 			}))
 			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
