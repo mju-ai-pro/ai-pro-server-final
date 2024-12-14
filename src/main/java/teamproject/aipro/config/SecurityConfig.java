@@ -36,8 +36,9 @@ public class SecurityConfig {
 				var config = new org.springframework.web.cors.CorsConfiguration();
 				config.setAllowCredentials(true);
 				config.setAllowedOrigins(List.of("https://www.mjuaipro.site", "https://www.sinjjanggu.site", "https://www.hongkikii.site", "https://ai-pro-fe.vercel.app"));
-				config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 				config.setAllowedHeaders(List.of("*"));
+				config.setExposedHeaders(List.of("Authorization"));
+				config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 				return config;
 			}))
 			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
