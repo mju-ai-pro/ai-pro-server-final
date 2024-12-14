@@ -13,7 +13,6 @@ import teamproject.aipro.domain.role.dto.response.RoleResponse;
 import teamproject.aipro.domain.role.service.RoleService;
 
 @RestController
-@CrossOrigin(origins = {"*"})
 @RequestMapping("/api/role")
 public class RoleController {
 
