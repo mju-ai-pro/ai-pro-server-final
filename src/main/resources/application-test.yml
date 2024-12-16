@@ -18,4 +18,4 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.H2Dialect
 ai:
-  uri: https://hongkikii.site:444/query
+  uri: {AI_URL}
