@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 import teamproject.aipro.domain.chat.dto.request.AiRequest;
 import teamproject.aipro.domain.chat.dto.request.ChatRequest;
@@ -28,6 +29,7 @@ public class ChatService {
 
 	// RestTmeplate으로 AI 서버의 API 호출
 	// 응답을 String 값으로 가져옴
+	@Transactional
 	public ChatResponse question(ChatRequest request, String catalogId, String userId) {
 		RestTemplate restTemplate = new RestTemplate();
 		AiRequest aiRequest = new AiRequest();
