@@ -343,6 +343,16 @@ jobs:
         env:
           CURRENT_VERSION: ${{ steps.check-deployment.outputs.current_version }}
         run: |
+          echo "Scaling down old deployment..."
+          kubectl scale deployment ai-pro-staging-${CURRENT_VERSION} --replicas=0
+          
+          echo "Waiting for pods to terminate gracefully..."
+          while kubectl get pods -l version=${CURRENT_VERSION} 2>/dev/null | grep -q "Running"; do
+          echo "Pods are still running... waiting"
+          sleep 5
+          done
+          
+          echo "All pods terminated, deleting deployment..."
           kubectl delete deployment ai-pro-staging-${CURRENT_VERSION}
           echo "Old deployment cleaned up successfully"
   
