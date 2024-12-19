@@ -27,7 +27,7 @@ public class ChatController {
 	public ResponseEntity<ChatResponse> question(
 		Principal principal,
 		@RequestBody ChatRequest chatRequest,
-		@RequestParam(required = false) String catalogId) {
+		@RequestParam(required = false) String catalogId) throws Exception {
 
 		String userId = principal.getName();
 
