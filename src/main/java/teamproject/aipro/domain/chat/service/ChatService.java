@@ -1,13 +1,15 @@
 package teamproject.aipro.domain.chat.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import teamproject.aipro.domain.chat.dto.request.AiRequest;
 import teamproject.aipro.domain.chat.dto.request.ChatRequest;
 import teamproject.aipro.domain.chat.dto.response.ChatResponse;
