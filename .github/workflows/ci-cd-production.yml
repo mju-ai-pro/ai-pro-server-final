@@ -329,15 +329,20 @@ jobs:
             
             sleep 10
           done
+          
+      - name: Wait for termination grace period
+        run: |
+          kubectl get pods -l version=${{ steps.check-deployment.outputs.current_version }} -o jsonpath='{.items[*].metadata.name}' | tr ' ' '\n' | while read pod_name; do
+            echo "Waiting for pod termination grace period for pod: $pod_name"
+            kubectl delete pod $pod_name --grace-period=60
+            sleep 60
+          done
   
       - name: Cleanup old deployment
         if: steps.monitor.outputs.deployment_status == 'success'
         env:
           CURRENT_VERSION: ${{ steps.check-deployment.outputs.current_version }}
         run: |
-          kubectl delete pods -l version=${CURRENT_VERSION}
-          echo "Old pods deleted"
-          
           kubectl delete deployment ai-pro-server-${CURRENT_VERSION}
           echo "Old deployment cleaned up"
   
