@@ -335,6 +335,9 @@ jobs:
         env:
           CURRENT_VERSION: ${{ steps.check-deployment.outputs.current_version }}
         run: |
+          kubectl delete pods -l version=${CURRENT_VERSION}
+          echo "Old pods deleted"
+          
           kubectl delete deployment ai-pro-server-${CURRENT_VERSION}
           echo "Old deployment cleaned up"
   
