@@ -102,15 +102,10 @@ jobs:
                   app: ai-pro-staging
                   version: blue
               spec:
-                terminationGracePeriodSeconds: 60
                 containers:
                   - name: ai-pro-staging
                     image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
                     imagePullPolicy: Always
-                    lifecycle:
-                      preStop:
-                        exec:
-                          command: ["/bin/sh", "-c", "sleep 30"]
                     ports:
                       - containerPort: 8080
                     env:
@@ -188,15 +183,10 @@ jobs:
                  app: ai-pro-staging
                  version: ${NEW_VERSION}
              spec:
-               terminationGracePeriodSeconds: 60
                containers:
                - name: ai-pro-staging
                  image: ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}
                  imagePullPolicy: Always
-                 lifecycle:
-                   preStop:
-                     exec:
-                       command: ["/bin/sh", "-c", "sleep 30"]
                  ports:
                  - containerPort: 8080
                  env:
@@ -343,14 +333,14 @@ jobs:
         env:
           CURRENT_VERSION: ${{ steps.check-deployment.outputs.current_version }}
         run: |
-          echo "Scaling down old deployment..."
-          kubectl scale deployment ai-pro-staging-${CURRENT_VERSION} --replicas=0
-          
-          echo "Waiting for pods to terminate gracefully..."
-          while kubectl get pods -l version=${CURRENT_VERSION} 2>/dev/null | grep -q "Running"; do
-          echo "Pods are still running... waiting"
-          sleep 5
-          done
+#          echo "Scaling down old deployment..."
+#          kubectl scale deployment ai-pro-staging-${CURRENT_VERSION} --replicas=0
+#
+#          echo "Waiting for pods to terminate gracefully..."
+#          while kubectl get pods -l version=${CURRENT_VERSION} 2>/dev/null | grep -q "Running"; do
+#          echo "Pods are still running... waiting"
+#          sleep 5
+#          done
           
           echo "All pods terminated, deleting deployment..."
           kubectl delete deployment ai-pro-staging-${CURRENT_VERSION}
