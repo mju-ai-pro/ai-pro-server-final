@@ -52,7 +52,7 @@ public class ChatService {
 		return new ChatResponse(message, catalogId);
 	}
 
-  @Transactional
+    @Transactional
 	public ChatResponse processNewCatalogRequest(ChatRequest chatRequest, String userId) throws Exception {
 		// AI 서버로부터 요약 받기
 		ChatResponse response = chatHistoryService.summary(chatRequest);
