@@ -1,12 +1,15 @@
 package teamproject.aipro.domain.chat.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import teamproject.aipro.domain.chat.dto.request.AiRequest;
 import teamproject.aipro.domain.chat.dto.request.ChatRequest;
 import teamproject.aipro.domain.chat.dto.response.ChatResponse;
@@ -29,8 +32,7 @@ public class ChatService {
 
 	// RestTmeplate으로 AI 서버의 API 호출
 	// 응답을 String 값으로 가져옴
-	@Transactional
-	public ChatResponse question(ChatRequest request, String catalogId, String userId) {
+	public ChatResponse question(ChatRequest request, String catalogId, String userId) throws Exception {
 		RestTemplate restTemplate = new RestTemplate();
 		AiRequest aiRequest = new AiRequest();
 		aiRequest.setUserId(userId);
@@ -39,24 +41,21 @@ public class ChatService {
 		List<String> chatHistory = chatHistoryService.getChatHistoryAsStringList(catalogId);
 		aiRequest.setChatHistory(chatHistory);
 
-		try {
-			String response = restTemplate.postForObject(uri, aiRequest, String.class);
 
-			ObjectMapper objectMapper = new ObjectMapper();
-			JsonNode rootNode = objectMapper.readTree(response);
+		String response = restTemplate.postForObject(uri, aiRequest, String.class);
 
-			String message = rootNode.path("message").asText();
-			// ChatHistory 저장
-			chatHistoryService.saveChatHistory(request.getQuestion(), message, catalogId);
+		ObjectMapper objectMapper = new ObjectMapper();
+		JsonNode rootNode = objectMapper.readTree(response);
 
-			return new ChatResponse(message, catalogId);
-		} catch (Exception e) {
-			System.err.println("Error occurred while calling AI server: " + e.getMessage());
-			return new ChatResponse("Error: Unable to get response from AI server.", catalogId);
-		}
+		String message = rootNode.path("message").asText();
+		// ChatHistory 저장
+		chatHistoryService.saveChatHistory(request.getQuestion(), message, catalogId);
+
+		return new ChatResponse(message, catalogId);
 	}
 
-	public ChatResponse processNewCatalogRequest(ChatRequest chatRequest, String userId) {
+    @Transactional
+	public ChatResponse processNewCatalogRequest(ChatRequest chatRequest, String userId) throws Exception {
 		// AI 서버로부터 요약 받기
 		ChatResponse response = chatHistoryService.summary(chatRequest);
 		Long newCatalogId = createNewCatalog(userId, response.getMessage());
@@ -64,7 +63,9 @@ public class ChatService {
 		return question(chatRequest, String.valueOf(newCatalogId), userId);
 	}
 
-	public ChatResponse processExistingCatalogRequest(ChatRequest chatRequest, String catalogId, String userId) {
+	@Transactional
+	public ChatResponse processExistingCatalogRequest(ChatRequest chatRequest, String catalogId, String userId) throws
+		Exception {
 		return question(chatRequest, catalogId, userId);
 	}
 
