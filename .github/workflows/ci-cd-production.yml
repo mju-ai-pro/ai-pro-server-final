@@ -347,6 +347,7 @@ jobs:
 
           kubectl delete deployment ai-pro-staging-${CURRENT_VERSION}
           echo "Old deployment cleaned up successfully"
+
   
       - name: Notify deployment status
         if: always()
