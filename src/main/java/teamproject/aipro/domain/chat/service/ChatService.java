@@ -30,7 +30,6 @@ public class ChatService {
 
 	// RestTmeplate으로 AI 서버의 API 호출
 	// 응답을 String 값으로 가져옴
-	@Transactional
 	public ChatResponse question(ChatRequest request, String catalogId, String userId) throws Exception {
 		RestTemplate restTemplate = new RestTemplate();
 		AiRequest aiRequest = new AiRequest();
@@ -53,6 +52,7 @@ public class ChatService {
 		return new ChatResponse(message, catalogId);
 	}
 
+	@Transactional
 	public ChatResponse processNewCatalogRequest(ChatRequest chatRequest, String userId) throws Exception {
 		// AI 서버로부터 요약 받기
 		ChatResponse response = chatHistoryService.summary(chatRequest);
@@ -61,6 +61,7 @@ public class ChatService {
 		return question(chatRequest, String.valueOf(newCatalogId), userId);
 	}
 
+	@Transactional
 	public ChatResponse processExistingCatalogRequest(ChatRequest chatRequest, String catalogId, String userId) throws
 		Exception {
 		return question(chatRequest, catalogId, userId);
