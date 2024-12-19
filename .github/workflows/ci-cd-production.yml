@@ -108,6 +108,10 @@ jobs:
                   - name: ai-pro-server
                     image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
                     imagePullPolicy: Always
+                    lifecycle:
+                      preStop:
+                        exec:
+                          command: ["/bin/sh", "-c", "sleep 10"]
                     ports:
                       - containerPort: 8080
                     env:
@@ -189,6 +193,10 @@ jobs:
                - name: ai-pro-server
                  image: ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}
                  imagePullPolicy: Always
+                 lifecycle:
+                   preStop:
+                     exec:
+                       command: ["/bin/sh", "-c", "sleep 10"]
                  ports:
                  - containerPort: 8080
                  env:
@@ -335,16 +343,6 @@ jobs:
         env:
           CURRENT_VERSION: ${{ steps.check-deployment.outputs.current_version }}
         run: |
-          kubectl scale deployment ai-pro-staging-${CURRENT_VERSION} --replicas=0
-          
-          echo "Waiting for old deployment to scale down gracefully..."
-          sleep 60
-
-          while kubectl get pods -l version=${CURRENT_VERSION} 2>/dev/null | grep -q Running; do
-          echo "Waiting for pods to terminate..."
-          sleep 5
-          done
-
           kubectl delete deployment ai-pro-staging-${CURRENT_VERSION}
           echo "Old deployment cleaned up successfully"
 
