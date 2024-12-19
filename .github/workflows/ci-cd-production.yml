@@ -103,6 +103,7 @@ jobs:
                   app: ai-pro-server
                   version: blue
               spec:
+                terminationGracePeriodSeconds: 60
                 containers:
                   - name: ai-pro-server
                     image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
@@ -183,6 +184,7 @@ jobs:
                  app: ai-pro-server
                  version: ${NEW_VERSION}
              spec:
+               terminationGracePeriodSeconds: 60
                containers:
                - name: ai-pro-server
                  image: ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}
