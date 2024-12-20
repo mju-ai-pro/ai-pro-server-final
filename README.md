@@ -102,8 +102,7 @@ Kubernetes(EKS)를 활용한 컨테이너 오케스트레이션과 GitHub Action
 # 6. Demo
 
 ## Link
-
-
+- https://drive.google.com/file/d/1sqhhXVsr29Lj-atXbkhM3W3zLGfgip2J/view?usp=share_link
 ## Key Stages
 
 ### 0. 배포 트리거
