@@ -12,9 +12,11 @@
 ### ✔️ Static Analysis
 <img src="https://img.shields.io/badge/SONARCLOUD-F3702A?style=for-the-badge&logo=sonarcloud&logoColor=white">
 
+<br>
+
 # 4. 아키텍처
 
-- TEST, STAGING, PRODUCTION 환경의 아키텍처를 다르게 구성
+- TEST, STAGING, PRODUCTION 환경을 다르게 구성
 
 ## TEST
 
@@ -22,14 +24,14 @@
 
 
 - ALB를 이용한 SSL/TLS 인증 수행
-- public subnet 내 서버용 단일 EC2 인스턴스와 RDS 존재
+- public subnet 내 서버용 단일 EC2 인스턴스와 RDS 구축
 
 ## STAGING
 
 ![아키텍처 설계도 _ STAGING 환경](https://github.com/user-attachments/assets/042a87cd-7d65-456b-bf6f-a1a65c4148dc)
 
 
-- EKS를 이용한 쿠버네티스 환경 설정
+- EKS를 이용한 쿠버네티스 환경 구축
 - 워커노드 2개를 default로 설정하여 파드 내 Spring Boot 컨테이너 실행
 - ECR을 통한 이미지 관리
 - API Gateway와 Lambda를 통한 함수 실행
@@ -39,5 +41,20 @@
 ![아키텍처 설계도 _ PRODUCTION 환경](https://github.com/user-attachments/assets/0363f812-d410-40dd-83be-bf9d8e7fff4f)
 
 
-- private subnet에 프로덕션용 RDS 설정
-- bastion host를 통한 RDS 관리 설정
+- private subnet 내 프로덕션용 RDS 구축
+- bastion host를 통해 RDS 관리
+
+
+<br>
+
+# 5. CI/CD 프로세스 전략
+
+![CD 프로세스](https://github.com/user-attachments/assets/240d2466-5999-400e-bea1-2972c0ef5c36)
+
+- 개발자는 각자 브랜치에서 백로그 작업을 진행한 후, test 브랜치로 pr을 전송한다.
+- 이때 sonar cloud를 통한 단위 테스트, 정적 분석이 수행된다.
+- QA는 pr을 승인하고 백로그에 대한 통합 테스트를 진행한다.
+- 통합 테스트 성공 시 QA는 staging 브랜치로 pr을 전송해 시스템 테스트를 진행한다.
+- 통합 테스트 실패 시 이전 staging 환경으로 롤백한다.
+- 시스템 테스트 성공 시 QA는 production 브랜치로 pr을 전송해 실제 운영 환경에 업데이트 사항을 적용한다.
+- 시스템 테스트 실패 시 케이스에 따라 문제를 해결한다.
