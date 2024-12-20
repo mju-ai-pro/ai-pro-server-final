@@ -96,3 +96,123 @@ Kubernetes(EKS)를 활용한 컨테이너 오케스트레이션과 GitHub Action
 - 통합 테스트 실패 시 이전 staging 환경으로 롤백한다.
 - 시스템 테스트 성공 시 QA는 production 브랜치로 pr을 전송해 실제 운영 환경에 업데이트 사항을 적용한다.
 - 시스템 테스트 실패 시 케이스에 따라 문제를 해결한다.
+
+# 6. 데모
+
+
+## Key Stages
+
+### 0. 배포 트리거
+
+```yaml
+on:
+  push:
+    branches:
+      - test/staging/production
+```
+
+- 각 브랜치에 push 이벤트 발생 시 워크플로우 시작
+- 자동화된 환경별 배포 프로세스 실행
+
+### 1. 사전 준비 단계
+
+```yaml
+- name: Configure AWS credentials
+  uses: aws-actions/configure-aws-credentials@v1
+```
+
+- AWS 및 ECR 접근 권한 설정
+- EKS 클러스터 설정 및 인증
+
+### 2. 현재 버전 확인
+
+```yaml
+- name: Check current deployment
+  id: check-deployment
+  run: |
+    CURRENT_VERSION=$(kubectl get service ai-pro-service -o jsonpath='{.spec.selector.version}')
+    if [ "$CURRENT_VERSION" = "blue" ]; then
+      echo "::set-output name=new_version::green"
+    else
+      echo "::set-output name=new_version::blue"
+    fi
+```
+
+- 현재 실행 중인 버전(Blue/Green) 확인
+- 새로 배포할 버전 결정
+
+### 3. 신규 버전 배포
+
+```yaml
+- name: Deploy new version
+  env:
+    NEW_VERSION: ${{ steps.check-deployment.outputs.new_version }}
+  run: |
+    kubectl apply -f - <<EOF
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: ai-pro-${NEW_VERSION}
+    spec:
+      replicas: 2
+      ...
+EOF
+```
+
+- 기존 버전은 유지한 채로 새로운 버전 배포
+- 2개의 레플리카로 구성하여 가용성 확보
+
+### 4. 배포 검증
+
+```yaml
+- name: Verify deployment
+  env:
+    NEW_VERSION: ${{ steps.check-deployment.outputs.new_version }}
+  run: |
+    kubectl rollout status deployment/ai-pro-${NEW_VERSION}
+    NEW_POD=$(kubectl get pods -l version=${NEW_VERSION} -o jsonpath='{.items[0].metadata.name}')
+    HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://domain/api/test/health)
+```
+
+- 신규 버전 파드의 정상 실행 확인
+- 헬스 체크를 통한 애플리케이션 상태 검증
+
+### 5. 트래픽 전환
+
+```yaml
+- name: Switch traffic
+  if: success()
+  env:
+    NEW_VERSION: ${{ steps.check-deployment.outputs.new_version }}
+  run: |
+    kubectl patch service ai-pro-service -p "{\"spec\":{\"selector\":{\"version\":\"${NEW_VERSION}\"}}}"
+```
+
+- 헬스 체크 통과 시 신규 버전으로 트래픽 전환
+- 서비스의 셀렉터를 신규 버전으로 업데이트
+
+### 6. 모니터링 및 롤백
+
+```yaml
+- name: Monitor deployment
+  run: |
+    FAILURE_THRESHOLD=3
+    SUCCESS_THRESHOLD=3
+```
+
+- 모니터링용 api에 요청 전송
+- 3회 연속 성공 시 배포 완료
+- 3회 연속 실패 시 자동 롤백
+
+### 7. 구버전 정리
+
+```yaml
+- name: Cleanup old deployment
+  if: steps.monitor.outputs.deployment_status == 'success'
+  run: |
+    kubectl scale deployment ai-pro-${CURRENT_VERSION} --replicas=0
+    kubectl delete deployment ai-pro-${CURRENT_VERSION}
+```
+
+- 신규 버전 안정화 확인 후 구버전 스케일 다운
+- 리소스 정리(우아한 종료)
