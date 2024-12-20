@@ -1,6 +1,13 @@
+# 1. 개요
+
+Spring Boot 기반의 AI 서비스를 위한 확장 가능하고 안정적인 인프라스트럭처 구축 프로젝트입니다.   
+Kubernetes(EKS)를 활용한 컨테이너 오케스트레이션과 GitHub Actions를 통한 자동화된 CI/CD 파이프라인을 구현했습니다.
+
+<br>
+
 # 2. 기술 스택
 ### ✔️ Container & Orchestration
-<img src="https://img.shields.io/badge/KUBERNETES-326CE5?style=for-the-badge&logo=Kubernetes&logoColor=white"><img src="https://img.shields.io/badge/DOCKER-2496ED?style=for-the-badge&logo=Docker&logoColor=white">
+<img src="https://img.shields.io/badge/DOCKER-2496ED?style=for-the-badge&logo=Docker&logoColor=white"><img src="https://img.shields.io/badge/KUBERNETES-326CE5?style=for-the-badge&logo=Kubernetes&logoColor=white">
 ### ✔️ CI/CD
 <img src="https://img.shields.io/badge/GITHUB ACTIONS-2088FF?style=for-the-badge&logo=githubactions&logoColor=white">
 
