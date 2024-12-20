@@ -97,8 +97,9 @@ Kubernetes(EKS)를 활용한 컨테이너 오케스트레이션과 GitHub Action
 - 시스템 테스트 성공 시 QA는 production 브랜치로 pr을 전송해 실제 운영 환경에 업데이트 사항을 적용한다.
 - 시스템 테스트 실패 시 케이스에 따라 문제를 해결한다.
 
-# 6. 데모
+<br>
 
+# 6. 데모
 
 ## Key Stages
 
